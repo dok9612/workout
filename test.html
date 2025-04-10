@@ -1,0 +1,2579 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Workout Tracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.0.0/css/all.min.css">
+    <style>
+        .weight-higher {
+            color: #10b981;
+            font-weight: bold;
+        }
+
+        .volume-progress-bar {
+            height: 8px;
+            border-radius: 4px;
+            background-color: #e5e7eb;
+        }
+
+        .volume-progress-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+
+        .time-input {
+            border: 1px solid #e5e7eb;
+            border-radius: 0.25rem;
+            padding: 0.25rem 0.5rem;
+        }
+
+        @media (prefers-color-scheme: dark) {
+            .time-input {
+                border-color: #4b5563;
+            }
+        }
+
+        .exercise-choice {
+            cursor: pointer;
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-right: 4px;
+        }
+
+        .exercise-choice.selected {
+            background-color: #2563eb;
+            color: white;
+        }
+
+        .dark .exercise-choice.selected {
+            background-color: #3b82f6;
+        }
+
+        .muscle-volume-card {
+            border-left: 4px solid transparent;
+        }
+
+        .muscle-volume-card.chest {
+            border-color: #ef4444;
+        }
+
+        .muscle-volume-card.back {
+            border-color: #3b82f6;
+        }
+
+        .muscle-volume-card.legs {
+            border-color: #10b981;
+        }
+
+        .muscle-volume-card.shoulders {
+            border-color: #f59e0b;
+        }
+
+        .muscle-volume-card.arms {
+            border-color: #8b5cf6;
+        }
+
+        .muscle-volume-card.core {
+            border-color: #ec4899;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100 dark:bg-gray-900 transition-colors duration-200">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="flex flex-wrap justify-between items-center mb-8">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-800 dark:text-white">Workout Tracker</h1>
+                <p class="text-gray-600 dark:text-gray-400">Undulating 5-Day Split Program</p>
+            </div>
+            <div class="flex items-center flex-wrap mt-4 sm:mt-0">
+                <div class="mr-4 flex items-center mb-2 sm:mb-0">
+                    <span class="text-gray-700 dark:text-gray-300 mr-2">Units:</span>
+                    <div class="relative inline-block w-10 mr-2 align-middle select-none">
+                        <input type="checkbox" id="unitToggle"
+                            class="checked:bg-blue-500 outline-none focus:outline-none right-4 checked:right-0 duration-200 ease-in absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer" />
+                        <label for="unitToggle"
+                            class="block overflow-hidden h-6 rounded-full bg-gray-300 dark:bg-gray-600 cursor-pointer"></label>
+                    </div>
+                    <span id="unitLabel" class="text-gray-700 dark:text-gray-300">KG</span>
+                </div>
+                <button id="exportBtn"
+                    class="mr-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition mb-2 sm:mb-0">
+                    <i class="fas fa-file-export mr-2"></i>Export
+                </button>
+                <button id="darkModeToggle" class="bg-gray-200 dark:bg-gray-700 p-2 rounded-full">
+                    <i class="fas fa-moon text-gray-700 dark:text-yellow-300"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Week/Day Navigation -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <div class="flex flex-wrap justify-between items-center">
+                <div class="flex items-center mb-4 sm:mb-0">
+                    <button id="prevWeekBtn"
+                        class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="mx-4">
+                        <span class="font-medium text-gray-700 dark:text-gray-300">Week:</span>
+                        <select id="weekSelector"
+                            class="ml-2 bg-gray-100 dark:bg-gray-700 border-0 rounded p-1 text-gray-800 dark:text-white">
+                            <!-- Will be populated by JS -->
+                        </select>
+                    </div>
+                    <button id="nextWeekBtn"
+                        class="text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="flex items-center">
+                    <div class="mr-4 flex items-center">
+                        <input type="checkbox" id="deloadToggle" class="mr-2 h-4 w-4">
+                        <label for="deloadToggle" class="text-gray-700 dark:text-gray-300">Deload Week</label>
+                    </div>
+                    <button id="addWeekBtn"
+                        class="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300">
+                        <i class="fas fa-plus-circle mr-1"></i>Add Week
+                    </button>
+                </div>
+            </div>
+
+            <div class="mt-4 grid grid-cols-5 gap-2 sm:gap-4">
+                <button
+                    class="day-btn py-2 px-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition text-sm sm:text-base"
+                    data-day="1">
+                    Day 1<br><span class="text-xs">Upper (Bench)</span>
+                </button>
+                <button
+                    class="day-btn py-2 px-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition text-sm sm:text-base"
+                    data-day="2">
+                    Day 2<br><span class="text-xs">Lower (Squat)</span>
+                </button>
+                <button
+                    class="day-btn py-2 px-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition text-sm sm:text-base"
+                    data-day="4">
+                    Day 4<br><span class="text-xs">Upper (Pull)</span>
+                </button>
+                <button
+                    class="day-btn py-2 px-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition text-sm sm:text-base"
+                    data-day="5">
+                    Day 5<br><span class="text-xs">Lower (Hinge)</span>
+                </button>
+                <button
+                    class="day-btn py-2 px-3 rounded-lg bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-blue-100 dark:hover:bg-blue-900 transition text-sm sm:text-base"
+                    data-day="6">
+                    Day 6<br><span class="text-xs">Rotational</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Volume Summary Section -->
+        <div id="volumeSummaryCard" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6 hidden">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Weekly Volume Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4" id="volumeSummaryContainer">
+                <!-- Will be populated by JS -->
+            </div>
+        </div>
+
+        <!-- Main Workout Area -->
+        <div id="workoutCard" class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <div class="flex items-center">
+                    <h2 id="workoutTitle" class="text-xl font-semibold text-gray-800 dark:text-white">Select a workout
+                        day</h2>
+                    <span id="deloadBadge"
+                        class="hidden ml-2 px-2 py-1 text-xs font-semibold rounded-full bg-yellow-500 text-yellow-900">DELOAD</span>
+                </div>
+                <div class="flex">
+                    <button id="saveWorkoutBtn"
+                        class="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700 transition mr-2" disabled>
+                        <i class="fas fa-save mr-1"></i>Save
+                    </button>
+                    <button id="resetWorkoutBtn"
+                        class="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition" disabled>
+                        <i class="fas fa-undo mr-1"></i>Reset
+                    </button>
+                </div>
+            </div>
+
+            <div id="workoutContainer" class="overflow-x-auto">
+                <!-- Will be populated with workout template -->
+                <div class="text-center py-10 text-gray-500 dark:text-gray-400">
+                    <i class="fas fa-dumbbell text-4xl mb-4"></i>
+                    <p>Select a workout day to begin</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Progress Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Progress Tracking</h2>
+
+            <div class="mb-4">
+                <label for="exerciseSelector" class="block text-gray-700 dark:text-gray-300 mb-2">Select
+                    Exercise:</label>
+                <select id="exerciseSelector"
+                    class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+                    <!-- Will be populated by JS -->
+                </select>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Strength Progress</h3>
+                    <div class="bg-gray-50 dark:bg-gray-900 p-2 rounded-lg" style="height: 300px">
+                        <canvas id="strengthChart"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Volume Progress</h3>
+                    <div class="bg-gray-50 dark:bg-gray-900 p-2 rounded-lg" style="height: 300px">
+                        <canvas id="volumeChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Notes Section -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Workout Notes</h2>
+            <div class="mb-4">
+                <label for="weekNoteSelector" class="block text-gray-700 dark:text-gray-300 mb-2">Week:</label>
+                <select id="weekNoteSelector"
+                    class="w-full p-2 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white">
+                    <!-- Will be populated by JS -->
+                </select>
+            </div>
+            <textarea id="weekNotes"
+                class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white h-32"
+                placeholder="Enter notes for this week (recovery, changes, etc.)"></textarea>
+            <button id="saveNotesBtn"
+                class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition">
+                <i class="fas fa-save mr-2"></i>Save Notes
+            </button>
+        </div>
+
+        <!-- Program Info Card -->
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 mb-6">
+            <h2 class="text-xl font-semibold text-gray-800 dark:text-white mb-4">Program Overview</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Core Principles:</h3>
+                    <ul class="list-disc pl-5 text-gray-600 dark:text-gray-400">
+                        <li>Goal: Concurrent Strength, Hypertrophy, Endurance, Flexibility</li>
+                        <li>Structure: 5-Day Undulating Weekly Split</li>
+                        <li>Progression: Weekly Volume increase</li>
+                        <li>Intensity: Autoregulated via RIR (1-2 on most work sets)</li>
+                        <li>Exercises: Multi-joint focus</li>
+                        <li>Tempo: Fast Up (Concentric), 3-4s Down (Eccentric) for hypertrophy</li>
+                        <li>Endurance: HIIT Swim post-Lower days; POL option post-Upper days</li>
+                        <li>Flexibility: Via Full ROM & Slow Eccentrics</li>
+                        <li>Deload: Reduce to 50% volume when needed (toggle deload weeks)</li>
+                    </ul>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">Weekly Split:</h3>
+                    <ul class="list-disc pl-5 text-gray-600 dark:text-gray-400">
+                        <li>Day 1: Upper Focus (Bench Strength / Pull Volume)</li>
+                        <li>Day 2: Lower Focus (Squat Strength / Hinge Volume)</li>
+                        <li>Day 3: Active Recovery / Rest</li>
+                        <li>Day 4: Upper Focus (Pull Strength / Bench Volume)</li>
+                        <li>Day 5: Lower Focus (Hinge Strength / Squat Volume)</li>
+                        <li>Day 6: Rotational / Accessory / Weak Point Work</li>
+                        <li>Day 7: Rest</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Workout Program Templates with Muscle Group Assignments and Exercise Variants
+        const workoutTemplates = {
+            day1: {
+                title: "Day 1: Upper Focus (Bench Strength)",
+                exercises: [
+                    {
+                        name: "Bench Press (Strength)",
+                        sets: 2,
+                        repRangeMin: 3,
+                        repRangeMax: 5,
+                        tempo: "Norm/Fast",
+                        rest: "3-4m",
+                        rirTarget: "1-2",
+                        notes: "Heavy Strength Focus.",
+                        category: "strength",
+                        muscleGroups: ["chest", "triceps", "shoulders"],
+                        targetVolume: 1000
+                    },
+                    {
+                        name: "Bench Press (Hypertrophy)",
+                        sets: 2,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Hypertrophy/Vol. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["chest", "triceps", "shoulders"],
+                        targetVolume: 2000
+                    },
+                    {
+                        name: "Pull-ups or Lat Pulldown",
+                        sets: 3,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Full ROM stretch. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["back", "biceps"],
+                        targetVolume: 2000,
+                        variants: ["Pull-ups", "Lat Pulldown"]
+                    },
+                    {
+                        name: "Incline DB Press",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 12,
+                        tempo: "F/U, S/D",
+                        rest: "2m",
+                        rirTarget: "1-2",
+                        notes: "Stretch at bottom. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["chest", "shoulders", "triceps"],
+                        targetVolume: 1800
+                    },
+                    {
+                        name: "Barbell or DB Row",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 12,
+                        tempo: "F/U, Norm Down",
+                        rest: "2m",
+                        rirTarget: "1-2",
+                        notes: "Choose non-Pendlay variant. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["back", "biceps"],
+                        targetVolume: 1800,
+                        variants: ["Barbell Row", "Dumbbell Row"]
+                    },
+                    {
+                        name: "Face Pulls / Rear Delts",
+                        sets: 3,
+                        repRangeMin: 12,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1-1.5m",
+                        rirTarget: "2-3",
+                        notes: "Shoulder health.",
+                        category: "hypertrophy",
+                        muscleGroups: ["shoulders", "upper back"],
+                        targetVolume: 1200,
+                        variants: ["Face Pulls", "Rear Delt Flyes"]
+                    },
+                    {
+                        name: "Endurance (Optional/POL)",
+                        sets: 1,
+                        repRangeMin: 30,
+                        repRangeMax: 45,
+                        tempo: "Zone 1-2",
+                        rest: "-",
+                        rirTarget: "-",
+                        notes: "Easy pace swim, cycle, walk - only if recovered.",
+                        category: "endurance",
+                        muscleGroups: ["cardio"],
+                        targetVolume: null,
+                        timeTracked: true,
+                        timeUnit: "mins",
+                        variants: ["Swimming", "Cycling", "Walking"]
+                    }
+                ]
+            },
+            day2: {
+                title: "Day 2: Lower Focus (Squat Strength)",
+                exercises: [
+                    {
+                        name: "Barbell Squat (Strength)",
+                        sets: 2,
+                        repRangeMin: 3,
+                        repRangeMax: 5,
+                        tempo: "Norm/Fast",
+                        rest: "3-4m",
+                        rirTarget: "1-2",
+                        notes: "Heavy Strength Focus. Deep controlled descent.",
+                        category: "strength",
+                        muscleGroups: ["quads", "glutes", "lower back"],
+                        targetVolume: 1200
+                    },
+                    {
+                        name: "Barbell Squat (Hypertrophy)",
+                        sets: 2,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Hypertrophy/Vol. Deep stretch. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["quads", "glutes", "lower back"],
+                        targetVolume: 2400
+                    },
+                    {
+                        name: "Romanian Deadlift (RDL)",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 12,
+                        tempo: "Norm Up, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Hamstring stretch focus. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["hamstrings", "glutes", "lower back"],
+                        targetVolume: 2200
+                    },
+                    {
+                        name: "Leg Press or Lunges",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "F/U, Norm Down",
+                        rest: "2m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["quads", "glutes"],
+                        targetVolume: 3000,
+                        variants: ["Leg Press", "Lunges"]
+                    },
+                    {
+                        name: "Hamstring Curls",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1-1.5m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["hamstrings"],
+                        targetVolume: 1500
+                    },
+                    {
+                        name: "Calf Raises",
+                        sets: 3,
+                        repRangeMin: 15,
+                        repRangeMax: 20,
+                        tempo: "Pause Stretch",
+                        rest: "1m",
+                        rirTarget: "1-2",
+                        notes: "Stretch at bottom. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["calves"],
+                        targetVolume: 1800
+                    },
+                    {
+                        name: "Endurance (HIIT Swim)",
+                        sets: 1,
+                        repRangeMin: 10,
+                        repRangeMax: 20,
+                        tempo: "HIIT Intrvl",
+                        rest: "-",
+                        rirTarget: "-",
+                        notes: "Ex: 8-12 x (30s Max / 30-60s Easy). Use POL if fatigued.",
+                        category: "endurance",
+                        muscleGroups: ["cardio"],
+                        targetVolume: null,
+                        timeTracked: true,
+                        timeUnit: "mins",
+                        variants: ["HIIT Swimming", "HIIT Cycling", "HIIT Rowing"]
+                    }
+                ]
+            },
+            day4: {
+                title: "Day 4: Upper Focus (Pull Strength)",
+                exercises: [
+                    {
+                        name: "Pull-ups or Lat Pulldown (Strength)",
+                        sets: 2,
+                        repRangeMin: 3,
+                        repRangeMax: 5,
+                        tempo: "Norm/Fast",
+                        rest: "3-4m",
+                        rirTarget: "1-2",
+                        notes: "Heavy Strength Focus. Weighted if needed.",
+                        category: "strength",
+                        muscleGroups: ["back", "biceps"],
+                        targetVolume: 800,
+                        variants: ["Weighted Pull-ups", "Heavy Lat Pulldown"]
+                    },
+                    {
+                        name: "Pull-ups or Lat Pulldown (Hypertrophy)",
+                        sets: 2,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Hypertrophy/Vol. Full ROM stretch. Prog: Add reps wkly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["back", "biceps"],
+                        targetVolume: 1600,
+                        variants: ["Pull-ups", "Lat Pulldown"]
+                    },
+                    {
+                        name: "Overhead Press (OHP)",
+                        sets: 3,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, Norm Down",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["shoulders", "triceps"],
+                        targetVolume: 1800
+                    },
+                    {
+                        name: "Barbell or DB Row",
+                        sets: 3,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, Norm Down",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Choose non-Pendlay variant. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["back", "biceps"],
+                        targetVolume: 1800,
+                        variants: ["Barbell Row", "Dumbbell Row"]
+                    },
+                    {
+                        name: "Flat Dumbbell Press",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 12,
+                        tempo: "F/U, S/D",
+                        rest: "2m",
+                        rirTarget: "1-2",
+                        notes: "Stretch at bottom. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["chest", "triceps", "shoulders"],
+                        targetVolume: 2000
+                    },
+                    {
+                        name: "Bicep Curls / Tri Ext",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1-1.5m",
+                        rirTarget: "1-2",
+                        notes: "Arm accessories.",
+                        category: "hypertrophy",
+                        muscleGroups: ["biceps", "triceps"],
+                        targetVolume: 1500,
+                        variants: ["Bicep Curls", "Tricep Extensions", "Superset Both"]
+                    },
+                    {
+                        name: "Endurance (Optional/POL)",
+                        sets: 1,
+                        repRangeMin: 30,
+                        repRangeMax: 45,
+                        tempo: "Zone 1-2",
+                        rest: "-",
+                        rirTarget: "-",
+                        notes: "Easy pace swim, cycle, walk - only if recovered.",
+                        category: "endurance",
+                        muscleGroups: ["cardio"],
+                        targetVolume: null,
+                        timeTracked: true,
+                        timeUnit: "mins",
+                        variants: ["Swimming", "Cycling", "Walking"]
+                    }
+                ]
+            },
+            day5: {
+                title: "Day 5: Lower Focus (Hinge Strength)",
+                exercises: [
+                    {
+                        name: "Deadlift (Strength)",
+                        sets: 2,
+                        repRangeMin: 3,
+                        repRangeMax: 5,
+                        tempo: "Norm/Fast",
+                        rest: "3-5m",
+                        rirTarget: "1-2",
+                        notes: "Heavy Strength Focus. Reset each rep.",
+                        category: "strength",
+                        muscleGroups: ["lower back", "hamstrings", "glutes", "traps"],
+                        targetVolume: 1400,
+                        variants: ["Conventional Deadlift", "Sumo Deadlift", "Trap Bar Deadlift"]
+                    },
+                    {
+                        name: "Deadlift (Hypertrophy)",
+                        sets: 2,
+                        repRangeMin: 6,
+                        repRangeMax: 10,
+                        tempo: "F/U, Norm Down",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Hypertrophy/Vol. Use RDLs/variant if preferred for reps. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["lower back", "hamstrings", "glutes", "traps"],
+                        targetVolume: 2800,
+                        variants: ["Light Deadlift", "RDL Variation"]
+                    },
+                    {
+                        name: "Front Squat or Leg Press",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 12,
+                        tempo: "F/U, S/D",
+                        rest: "2-3m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["quads", "glutes", "core"],
+                        targetVolume: 2400,
+                        variants: ["Front Squat", "Leg Press"]
+                    },
+                    {
+                        name: "Good Mornings or Hyperext",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "2m",
+                        rirTarget: "1-2",
+                        notes: "Posterior chain accessory. Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["lower back", "hamstrings", "glutes"],
+                        targetVolume: 1800,
+                        variants: ["Good Mornings", "Hyperextensions"]
+                    },
+                    {
+                        name: "Leg Extensions",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1-1.5m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["quads"],
+                        targetVolume: 1500
+                    },
+                    {
+                        name: "Seated Calf Raises",
+                        sets: 3,
+                        repRangeMin: 15,
+                        repRangeMax: 20,
+                        tempo: "Pause Stretch",
+                        rest: "1m",
+                        rirTarget: "1-2",
+                        notes: "Prog: Add reps weekly.",
+                        category: "hypertrophy",
+                        muscleGroups: ["calves"],
+                        targetVolume: 1800
+                    },
+                    {
+                        name: "Endurance (HIIT Swim)",
+                        sets: 1,
+                        repRangeMin: 10,
+                        repRangeMax: 20,
+                        tempo: "HIIT Intrvl",
+                        rest: "-",
+                        rirTarget: "-",
+                        notes: "Ex: 8-12 x (30s Max / 30-60s Easy). Use POL if fatigued.",
+                        category: "endurance",
+                        muscleGroups: ["cardio"],
+                        targetVolume: null,
+                        timeTracked: true,
+                        timeUnit: "mins",
+                        variants: ["HIIT Swimming", "HIIT Cycling", "HIIT Rowing"]
+                    }
+                ]
+            },
+            day6: {
+                title: "Day 6: Rotational / Accessory / Weak Point",
+                exercises: [
+                    {
+                        name: "Cable Woodchops",
+                        sets: 3,
+                        repRangeMin: 10,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1.5m",
+                        rirTarget: "1-2",
+                        notes: "Rotational Core. Prog: Add reps/weight.",
+                        category: "hypertrophy",
+                        muscleGroups: ["core", "obliques"],
+                        targetVolume: 1200,
+                        variants: ["High to Low Woodchops", "Low to High Woodchops", "Horizontal Woodchops"]
+                    },
+                    {
+                        name: "Pallof Press",
+                        sets: 3,
+                        repRangeMin: 30,
+                        repRangeMax: 45,
+                        tempo: "Iso Hold",
+                        rest: "1.5m",
+                        rirTarget: "N/A",
+                        notes: "Anti-Rotation Core. Prog: Increase hold time/resistance.",
+                        category: "hypertrophy",
+                        muscleGroups: ["core", "obliques"],
+                        targetVolume: 900,
+                        timeTracked: true,
+                        timeUnit: "secs"
+                    },
+                    {
+                        name: "Farmer's Walk / Carry",
+                        sets: 3,
+                        repRangeMin: 30,
+                        repRangeMax: 50,
+                        tempo: "Brisk Pace",
+                        rest: "2m",
+                        rirTarget: "N/A",
+                        notes: "Grip/Core/Conditioning. Prog: Increase distance/weight.",
+                        category: "hypertrophy",
+                        muscleGroups: ["forearms", "core", "traps", "shoulders"],
+                        targetVolume: 1500,
+                        timeTracked: true,
+                        timeUnit: "meters",
+                        variants: ["Farmers Walk", "Suitcase Carry", "Overhead Carry"]
+                    },
+                    {
+                        name: "Optional Weak Point 1",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1.5-2m",
+                        rirTarget: "1-2",
+                        notes: "Choose exercise for lagging muscle/lift.",
+                        category: "hypertrophy",
+                        muscleGroups: ["weakpoint"],
+                        targetVolume: 1500,
+                        weakPointExercise: true,
+                        variants: ["Chest Exercise", "Back Exercise", "Shoulder Exercise", "Leg Exercise", "Arm Exercise"]
+                    },
+                    {
+                        name: "Optional Weak Point 2",
+                        sets: 3,
+                        repRangeMin: 8,
+                        repRangeMax: 15,
+                        tempo: "Controlled",
+                        rest: "1.5-2m",
+                        rirTarget: "1-2",
+                        notes: "Choose exercise for lagging muscle/lift.",
+                        category: "hypertrophy",
+                        muscleGroups: ["weakpoint"],
+                        targetVolume: 1500,
+                        weakPointExercise: true,
+                        variants: ["Chest Exercise", "Back Exercise", "Shoulder Exercise", "Leg Exercise", "Arm Exercise"]
+                    },
+                    {
+                        name: "Optional Endurance",
+                        sets: 1,
+                        repRangeMin: 20,
+                        repRangeMax: 40,
+                        tempo: "Zone 1-2",
+                        rest: "-",
+                        rirTarget: "-",
+                        notes: "Extra easy cardio if desired and recovered.",
+                        category: "endurance",
+                        muscleGroups: ["cardio"],
+                        targetVolume: null,
+                        timeTracked: true,
+                        timeUnit: "mins",
+                        variants: ["Swimming", "Cycling", "Walking", "Rowing"]
+                    }
+                ]
+            }
+        };
+
+        // Muscle Group Structure (for volume tracking)
+        const muscleGroups = {
+            chest: {
+                name: "Chest",
+                color: "#ef4444",
+                weeklyTarget: 6000,
+                strengthTarget: 2000,
+                hypertrophyTarget: 4000
+            },
+            back: {
+                name: "Back",
+                color: "#3b82f6",
+                weeklyTarget: 6000,
+                strengthTarget: 2000,
+                hypertrophyTarget: 4000
+            },
+            shoulders: {
+                name: "Shoulders",
+                color: "#f59e0b",
+                weeklyTarget: 4500,
+                strengthTarget: 1500,
+                hypertrophyTarget: 3000
+            },
+            quads: {
+                name: "Quadriceps",
+                color: "#10b981",
+                weeklyTarget: 6000,
+                strengthTarget: 2000,
+                hypertrophyTarget: 4000
+            },
+            hamstrings: {
+                name: "Hamstrings",
+                color: "#10b981",
+                weeklyTarget: 4500,
+                strengthTarget: 1500,
+                hypertrophyTarget: 3000
+            },
+            glutes: {
+                name: "Glutes",
+                color: "#10b981",
+                weeklyTarget: 6000,
+                strengthTarget: 2000,
+                hypertrophyTarget: 4000
+            },
+            calves: {
+                name: "Calves",
+                color: "#10b981",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            biceps: {
+                name: "Biceps",
+                color: "#8b5cf6",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            triceps: {
+                name: "Triceps",
+                color: "#8b5cf6",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            forearms: {
+                name: "Forearms",
+                color: "#8b5cf6",
+                weeklyTarget: 2000,
+                strengthTarget: 500,
+                hypertrophyTarget: 1500
+            },
+            traps: {
+                name: "Traps",
+                color: "#3b82f6",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            "upper back": {
+                name: "Upper Back",
+                color: "#3b82f6",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            "lower back": {
+                name: "Lower Back",
+                color: "#10b981",
+                weeklyTarget: 4500,
+                strengthTarget: 1500,
+                hypertrophyTarget: 3000
+            },
+            core: {
+                name: "Core",
+                color: "#ec4899",
+                weeklyTarget: 3000,
+                strengthTarget: 750,
+                hypertrophyTarget: 2250
+            },
+            obliques: {
+                name: "Obliques",
+                color: "#ec4899",
+                weeklyTarget: 2000,
+                strengthTarget: 500,
+                hypertrophyTarget: 1500
+            },
+            cardio: {
+                name: "Cardiovascular",
+                color: "#64748b",
+                weeklyTarget: 120,
+                strengthTarget: 0,
+                hypertrophyTarget: 0,
+                timeUnit: true
+            }
+        };
+
+        // Initialize State
+        let state = {
+            currentWeek: 1,
+            currentDay: null,
+            weekCount: 1,
+            workoutData: {},
+            notes: {},
+            deloadWeeks: {},
+            weightUnit: 'kg', // Default to kg
+            exerciseVariants: {}, // Store selected exercise variants
+            weakPointSelections: {} // Store weak point exercise selections
+        };
+
+        // DOM Elements
+        const weekSelector = document.getElementById('weekSelector');
+        const weekNoteSelector = document.getElementById('weekNoteSelector');
+        const workoutTitle = document.getElementById('workoutTitle');
+        const workoutContainer = document.getElementById('workoutContainer');
+        const saveWorkoutBtn = document.getElementById('saveWorkoutBtn');
+        const resetWorkoutBtn = document.getElementById('resetWorkoutBtn');
+        const exportBtn = document.getElementById('exportBtn');
+        const darkModeToggle = document.getElementById('darkModeToggle');
+        const dayButtons = document.querySelectorAll('.day-btn');
+        const prevWeekBtn = document.getElementById('prevWeekBtn');
+        const nextWeekBtn = document.getElementById('nextWeekBtn');
+        const addWeekBtn = document.getElementById('addWeekBtn');
+        const weekNotes = document.getElementById('weekNotes');
+        const saveNotesBtn = document.getElementById('saveNotesBtn');
+        const exerciseSelector = document.getElementById('exerciseSelector');
+        const deloadToggle = document.getElementById('deloadToggle');
+        const deloadBadge = document.getElementById('deloadBadge');
+        const unitToggle = document.getElementById('unitToggle');
+        const unitLabel = document.getElementById('unitLabel');
+        const workoutCard = document.getElementById('workoutCard');
+        const volumeSummaryCard = document.getElementById('volumeSummaryCard');
+        const volumeSummaryContainer = document.getElementById('volumeSummaryContainer');
+
+        // Charts
+        let strengthChart = null;
+        let volumeChart = null;
+
+        // Utility Functions for Weight Handling
+        function roundToNearest(value, nearest = 2.5) {
+            return Math.round(value / nearest) * nearest;
+        }
+
+        function convertWeight(weight, fromUnit, toUnit) {
+            if (!weight || isNaN(parseFloat(weight))) return '';
+            const numWeight = parseFloat(weight);
+
+            if (fromUnit === toUnit) return numWeight;
+
+            // Convert kg to lbs
+            if (fromUnit === 'kg' && toUnit === 'lbs') {
+                return roundToNearest(numWeight * 2.20462);
+            }
+
+            // Convert lbs to kg
+            if (fromUnit === 'lbs' && toUnit === 'kg') {
+                return roundToNearest(numWeight / 2.20462);
+            }
+
+            return numWeight;
+        }
+
+        // Load data from localStorage
+        function loadData() {
+            const savedData = localStorage.getItem('workoutTrackerData');
+            if (savedData) {
+                const parsedData = JSON.parse(savedData);
+                state = { ...state, ...parsedData };
+            }
+
+            // Initialize exercise variants and weak point selections if not present
+            if (!state.exerciseVariants) state.exerciseVariants = {};
+            if (!state.weakPointSelections) state.weakPointSelections = {};
+
+            // Load weight unit preference
+            const savedUnit = localStorage.getItem('weightUnit');
+            if (savedUnit) {
+                state.weightUnit = savedUnit;
+            }
+
+            // Update UI to reflect weight unit
+            unitToggle.checked = state.weightUnit === 'lbs';
+            unitLabel.textContent = state.weightUnit.toUpperCase();
+
+            updateUI();
+        }
+
+        // Save data to localStorage
+        function saveData() {
+            localStorage.setItem('workoutTrackerData', JSON.stringify({
+                currentWeek: state.currentWeek,
+                currentDay: state.currentDay,
+                weekCount: state.weekCount,
+                workoutData: state.workoutData,
+                notes: state.notes,
+                deloadWeeks: state.deloadWeeks,
+                weightUnit: state.weightUnit,
+                exerciseVariants: state.exerciseVariants,
+                weakPointSelections: state.weakPointSelections
+            }));
+            localStorage.setItem('weightUnit', state.weightUnit);
+        }
+
+        // Update UI elements
+        function updateUI() {
+            // Update week selector
+            weekSelector.innerHTML = '';
+            weekNoteSelector.innerHTML = '';
+            for (let i = 1; i <= state.weekCount; i++) {
+                const weekOption = document.createElement('option');
+                weekOption.value = i;
+                weekOption.textContent = `Week ${i}${state.deloadWeeks[i] ? ' (Deload)' : ''}`;
+                weekOption.selected = i === state.currentWeek;
+                weekSelector.appendChild(weekOption);
+
+                const noteOption = document.createElement('option');
+                noteOption.value = i;
+                noteOption.textContent = `Week ${i}${state.deloadWeeks[i] ? ' (Deload)' : ''}`;
+                noteOption.selected = i === state.currentWeek;
+                weekNoteSelector.appendChild(noteOption);
+            }
+
+            // Update deload toggle
+            deloadToggle.checked = state.deloadWeeks[state.currentWeek] || false;
+
+            // Update deload badge visibility
+            if (state.deloadWeeks[state.currentWeek]) {
+                deloadBadge.classList.remove('hidden');
+                workoutCard.classList.add('border-l-4', 'border-yellow-500');
+            } else {
+                deloadBadge.classList.add('hidden');
+                workoutCard.classList.remove('border-l-4', 'border-yellow-500');
+            }
+
+            // Update week notes
+            const currentWeekNotes = state.notes[state.currentWeek] || '';
+            weekNotes.value = currentWeekNotes;
+
+            // Update navigation buttons
+            prevWeekBtn.disabled = state.currentWeek <= 1;
+            nextWeekBtn.disabled = state.currentWeek >= state.weekCount;
+
+            // Update day buttons
+            dayButtons.forEach(btn => {
+                const day = parseInt(btn.dataset.day);
+                const isActive = day === state.currentDay && state.currentDay !== null;
+                btn.classList.toggle('bg-blue-500', isActive);
+                btn.classList.toggle('text-white', isActive);
+                btn.classList.toggle('bg-gray-200', !isActive);
+                btn.classList.toggle('dark:bg-gray-700', !isActive);
+                btn.classList.toggle('dark:bg-blue-700', isActive);
+            });
+
+            // If a day is selected, show the workout
+            if (state.currentDay) {
+                loadWorkout(state.currentDay);
+                updateVolumeSummary(); // Update volume summary for the week
+                volumeSummaryCard.classList.remove('hidden');
+            } else {
+                volumeSummaryCard.classList.add('hidden');
+            }
+
+            // Update exercise selector for charts
+            updateExerciseSelector();
+
+            // Update charts if exercise is selected
+            updateCharts();
+        }
+
+        // Calculate and display weekly volume summary by muscle group
+        function updateVolumeSummary() {
+            // Only proceed if we have a current week
+            if (!state.currentWeek) return;
+
+            const weekKey = `week${state.currentWeek}`;
+            if (!state.workoutData[weekKey]) return;
+
+            // Calculate total volume for each muscle group from all workouts in the current week
+            const volumeByMuscle = {};
+            const strengthVolumeByMuscle = {};
+            const hypertrophyVolumeByMuscle = {};
+
+            // Initialize all muscle groups with zero volume
+            for (const muscleKey in muscleGroups) {
+                volumeByMuscle[muscleKey] = 0;
+                strengthVolumeByMuscle[muscleKey] = 0;
+                hypertrophyVolumeByMuscle[muscleKey] = 0;
+            }
+
+            // Loop through all days in the week
+            for (const dayKey in state.workoutData[weekKey]) {
+                const workout = state.workoutData[weekKey][dayKey];
+
+                // Process each exercise
+                workout.exercises.forEach((exercise, exIndex) => {
+                    const templateDay = `day${workout.day}`;
+                    const templateExercise = workoutTemplates[templateDay].exercises[exIndex];
+
+                    // Skip if no muscle groups defined
+                    if (!templateExercise || !templateExercise.muscleGroups) return;
+
+                    // Calculate volume (weight × reps) for this exercise
+                    let totalVolume = 0;
+                    exercise.sets.forEach(set => {
+                        if (set.weight && set.actualReps) {
+                            // Convert weight to current unit if needed
+                            let weight = parseFloat(set.weight);
+                            if (workout.weightUnit && workout.weightUnit !== state.weightUnit) {
+                                weight = convertWeight(weight, workout.weightUnit, state.weightUnit);
+                            }
+
+                            const reps = parseInt(set.actualReps);
+
+                            if (!isNaN(weight) && !isNaN(reps)) {
+                                totalVolume += weight * reps;
+                            }
+                        }
+                    });
+
+                    // Distribute the volume among all muscle groups for this exercise
+                    if (totalVolume > 0) {
+                        const muscleGroupCount = templateExercise.muscleGroups.length;
+                        const volumePerMuscle = totalVolume / muscleGroupCount;
+
+                        templateExercise.muscleGroups.forEach(muscle => {
+                            volumeByMuscle[muscle] += volumePerMuscle;
+
+                            // Separate tracking for strength vs hypertrophy
+                            if (templateExercise.category === 'strength') {
+                                strengthVolumeByMuscle[muscle] += volumePerMuscle;
+                            } else if (templateExercise.category === 'hypertrophy') {
+                                hypertrophyVolumeByMuscle[muscle] += volumePerMuscle;
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Create HTML for the volume summary
+            volumeSummaryContainer.innerHTML = '';
+
+            // Group related muscle groups
+            const muscleGroupCategories = {
+                "Upper Body": ["chest", "back", "shoulders", "upper back", "traps"],
+                "Lower Body": ["quads", "hamstrings", "glutes", "calves", "lower back"],
+                "Arms & Core": ["biceps", "triceps", "forearms", "core", "obliques"],
+                "Cardio": ["cardio"]
+            };
+
+            // Create cards for each category
+            for (const category in muscleGroupCategories) {
+                const muscleList = muscleGroupCategories[category];
+
+                // Create category heading
+                const categoryDiv = document.createElement('div');
+                categoryDiv.className = "mb-4";
+                categoryDiv.innerHTML = `<h3 class="text-lg font-medium text-gray-700 dark:text-gray-300 mb-2">${category}</h3>`;
+
+                // Add each muscle group in this category
+                let hasMusclesWithVolume = false;
+
+                muscleList.forEach(muscleKey => {
+                    if (muscleGroups[muscleKey]) {
+                        const muscleData = muscleGroups[muscleKey];
+                        const totalVolume = Math.round(volumeByMuscle[muscleKey]);
+                        const strengthVolume = Math.round(strengthVolumeByMuscle[muscleKey]);
+                        const hypertrophyVolume = Math.round(hypertrophyVolumeByMuscle[muscleKey]);
+
+                        // Only show if there's a target or actual volume
+                        if (totalVolume > 0 || muscleData.weeklyTarget > 0) {
+                            hasMusclesWithVolume = true;
+
+                            // Calculate percentages
+                            const totalPercentage = muscleData.weeklyTarget > 0 ?
+                                Math.min(100, Math.round((totalVolume / muscleData.weeklyTarget) * 100)) : 0;
+
+                            const strengthPercentage = muscleData.strengthTarget > 0 ?
+                                Math.min(100, Math.round((strengthVolume / muscleData.strengthTarget) * 100)) : 0;
+
+                            const hypertrophyPercentage = muscleData.hypertrophyTarget > 0 ?
+                                Math.min(100, Math.round((hypertrophyVolume / muscleData.hypertrophyTarget) * 100)) : 0;
+
+                            // Create muscle group card
+                            const muscleCard = document.createElement('div');
+                            muscleCard.className = `muscle-volume-card p-3 bg-gray-50 dark:bg-gray-900 rounded-md mb-2 ${muscleKey}`;
+
+                            // Units display
+                            const units = muscleData.timeUnit ? 'mins' : state.weightUnit;
+
+                            muscleCard.innerHTML = `
+                                <div class="flex justify-between items-center mb-1">
+                                    <span class="font-medium text-gray-800 dark:text-white">${muscleData.name}</span>
+                                    <span class="text-sm text-gray-600 dark:text-gray-400">
+                                        ${totalVolume} / ${muscleData.weeklyTarget} ${units} (${totalPercentage}%)
+                                    </span>
+                                </div>
+                                
+                                <div class="volume-progress-bar mb-2 dark:bg-gray-700">
+                                    <div class="fill bg-blue-500" style="width: ${totalPercentage}%; background-color: ${muscleData.color}"></div>
+                                </div>
+                                
+                                <div class="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                                            <span>Strength:</span>
+                                            <span>${strengthVolume} / ${muscleData.strengthTarget} ${units}</span>
+                                        </div>
+                                        <div class="volume-progress-bar h-2 dark:bg-gray-700">
+                                            <div class="fill" style="width: ${strengthPercentage}%; background-color: ${muscleData.color}; opacity: 0.8"></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div class="flex justify-between text-gray-600 dark:text-gray-400">
+                                            <span>Hypertrophy:</span>
+                                            <span>${hypertrophyVolume} / ${muscleData.hypertrophyTarget} ${units}</span>
+                                        </div>
+                                        <div class="volume-progress-bar h-2 dark:bg-gray-700">
+                                            <div class="fill" style="width: ${hypertrophyPercentage}%; background-color: ${muscleData.color}; opacity: 0.6"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+
+                            categoryDiv.appendChild(muscleCard);
+                        }
+                    }
+                });
+
+                // Only add the category if it has muscles with volume
+                if (hasMusclesWithVolume) {
+                    volumeSummaryContainer.appendChild(categoryDiv);
+                }
+            }
+        }
+
+        // Find weak points for suggestions
+        function getWeakPointSuggestions() {
+            // Only proceed if we have a current week
+            if (!state.currentWeek) return [];
+
+            const weekKey = `week${state.currentWeek}`;
+            if (!state.workoutData[weekKey]) return [];
+
+            // Calculate volume percentage of target for each muscle group
+            const volumePercentageByMuscle = {};
+
+            // First calculate total volume for each muscle group
+            const volumeByMuscle = {};
+            for (const muscleKey in muscleGroups) {
+                volumeByMuscle[muscleKey] = 0;
+            }
+
+            // Loop through all days in the week
+            for (const dayKey in state.workoutData[weekKey]) {
+                const workout = state.workoutData[weekKey][dayKey];
+
+                // Process each exercise
+                workout.exercises.forEach((exercise, exIndex) => {
+                    const templateDay = `day${workout.day}`;
+                    const templateExercise = workoutTemplates[templateDay].exercises[exIndex];
+
+                    // Skip if no muscle groups defined
+                    if (!templateExercise || !templateExercise.muscleGroups) return;
+
+                    // Calculate volume (weight × reps) for this exercise
+                    let totalVolume = 0;
+                    exercise.sets.forEach(set => {
+                        if (set.weight && set.actualReps) {
+                            // Convert weight to current unit if needed
+                            let weight = parseFloat(set.weight);
+                            if (workout.weightUnit && workout.weightUnit !== state.weightUnit) {
+                                weight = convertWeight(weight, workout.weightUnit, state.weightUnit);
+                            }
+
+                            const reps = parseInt(set.actualReps);
+
+                            if (!isNaN(weight) && !isNaN(reps)) {
+                                totalVolume += weight * reps;
+                            }
+                        }
+                    });
+
+                    // Distribute the volume among all muscle groups for this exercise
+                    if (totalVolume > 0) {
+                        const muscleGroupCount = templateExercise.muscleGroups.length;
+                        const volumePerMuscle = totalVolume / muscleGroupCount;
+
+                        templateExercise.muscleGroups.forEach(muscle => {
+                            volumeByMuscle[muscle] += volumePerMuscle;
+                        });
+                    }
+                });
+            }
+
+            // Calculate percentage of target for each muscle group
+            for (const muscleKey in muscleGroups) {
+                const muscleData = muscleGroups[muscleKey];
+                const volume = volumeByMuscle[muscleKey];
+                const percentage = muscleData.weeklyTarget > 0 ?
+                    (volume / muscleData.weeklyTarget) * 100 : 100;
+
+                volumePercentageByMuscle[muscleKey] = percentage;
+            }
+
+            // Sort muscle groups by percentage (lowest first)
+            const sortedMuscles = Object.keys(volumePercentageByMuscle)
+                .filter(key => key !== 'cardio' && key !== 'weakpoint') // Exclude certain categories
+                .sort((a, b) => volumePercentageByMuscle[a] - volumePercentageByMuscle[b]);
+
+            // Take the top 5 weakest muscle groups
+            return sortedMuscles.slice(0, 5).map(muscleKey => {
+                return {
+                    muscle: muscleKey,
+                    name: muscleGroups[muscleKey].name,
+                    percentage: Math.round(volumePercentageByMuscle[muscleKey]),
+                    color: muscleGroups[muscleKey].color
+                };
+            });
+        }
+
+        // Get popular exercises for specific muscle groups (for weak point suggestions)
+        function getExercisesForMuscle(muscleGroup) {
+            switch (muscleGroup) {
+                case 'chest':
+                    return ["Dumbbell Flyes", "Cable Flyes", "Push-ups", "Machine Chest Press", "Dips"];
+                case 'back':
+                    return ["Pull-ups", "Lat Pulldown", "Cable Rows", "T-Bar Rows", "Seated Cable Rows"];
+                case 'shoulders':
+                    return ["Lateral Raises", "Face Pulls", "Overhead Press", "Arnold Press", "Upright Rows"];
+                case 'quads':
+                    return ["Leg Press", "Front Squats", "Hack Squats", "Leg Extensions", "Walking Lunges"];
+                case 'hamstrings':
+                    return ["Romanian Deadlift", "Leg Curls", "Good Mornings", "Nordic Curls", "Glute-Ham Raises"];
+                case 'glutes':
+                    return ["Hip Thrusts", "Glute Bridges", "Bulgarian Split Squats", "Cable Kickbacks", "Step-ups"];
+                case 'calves':
+                    return ["Standing Calf Raises", "Seated Calf Raises", "Calf Press", "Jump Rope", "Box Jumps"];
+                case 'biceps':
+                    return ["Barbell Curls", "Dumbbell Curls", "Hammer Curls", "Preacher Curls", "Concentration Curls"];
+                case 'triceps':
+                    return ["Tricep Pushdowns", "Skull Crushers", "Close-Grip Bench", "Dips", "Overhead Extensions"];
+                case 'forearms':
+                    return ["Wrist Curls", "Reverse Wrist Curls", "Farmers Walks", "Dead Hangs", "Gripper Work"];
+                case 'traps':
+                    return ["Shrugs", "High Pulls", "Face Pulls", "Rack Pulls", "Farmers Walks"];
+                case 'upper back':
+                    return ["Face Pulls", "Bent Over Rows", "Reverse Flyes", "T-Bar Rows", "Cable Rows"];
+                case 'lower back':
+                    return ["Hyperextensions", "Good Mornings", "Superman", "Bird Dogs", "Planks"];
+                case 'core':
+                    return ["Planks", "Ab Rollouts", "Hanging Leg Raises", "Cable Crunches", "Russian Twists"];
+                case 'obliques':
+                    return ["Russian Twists", "Side Planks", "Woodchoppers", "Side Bends", "Bicycle Crunches"];
+                default:
+                    return ["Squats", "Bench Press", "Deadlifts", "Overhead Press", "Pull-ups"];
+            }
+        }
+
+        // Load workout template for selected day
+        function loadWorkout(day) {
+            const template = workoutTemplates[`day${day}`];
+            if (!template) return;
+
+            workoutTitle.textContent = template.title;
+            saveWorkoutBtn.disabled = false;
+            resetWorkoutBtn.disabled = false;
+
+            // Get saved workout data or use template
+            const weekKey = `week${state.currentWeek}`;
+            const dayKey = `day${day}`;
+            const savedWorkout = state.workoutData[weekKey] && state.workoutData[weekKey][dayKey]
+                ? state.workoutData[weekKey][dayKey]
+                : null;
+
+            // Get previous week data for weight auto-population and deload calculations if needed
+            let previousWeekData = null;
+            if (state.currentWeek > 1) {
+                const prevWeekKey = `week${state.currentWeek - 1}`;
+                previousWeekData = state.workoutData[prevWeekKey] && state.workoutData[prevWeekKey][dayKey]
+                    ? state.workoutData[prevWeekKey][dayKey]
+                    : null;
+            }
+
+            // Get weak point suggestions if this is day 6
+            const weakPointSuggestions = day === 6 ? getWeakPointSuggestions() : [];
+
+            // Create table
+            let tableHTML = `
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead>
+                        <tr class="bg-gray-50 dark:bg-gray-800">
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Exercise</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Sets × Reps</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Weight (${state.weightUnit.toUpperCase()})</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actual Reps</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">RIR</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Volume</th>
+                            <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            `;
+
+            // Add rows for each exercise
+            template.exercises.forEach((exercise, index) => {
+                const savedExercise = savedWorkout ? savedWorkout.exercises[index] : null;
+                const prevExercise = previousWeekData ? previousWeekData.exercises[index] : null;
+
+                // Handle exercise variants
+                let currentVariant = exercise.name;
+                const exerciseKey = `${day}-${index}`;
+
+                // If this exercise has variants, get the selected one
+                let variantOptions = '';
+                if (exercise.variants) {
+                    // Check if we have a saved variant
+                    if (state.exerciseVariants[exerciseKey]) {
+                        currentVariant = state.exerciseVariants[exerciseKey];
+                    } else if (exercise.weakPointExercise) {
+                        // For weak point exercises, use the first suggestion if available
+                        if (weakPointSuggestions.length > 0) {
+                            const suggestedMuscle = weakPointSuggestions[0].muscle;
+                            const suggestedExercises = getExercisesForMuscle(suggestedMuscle);
+                            if (suggestedExercises.length > 0) {
+                                currentVariant = suggestedExercises[0];
+                                state.exerciseVariants[exerciseKey] = currentVariant;
+                            }
+                        }
+                    }
+
+                    // Create variant selection HTML
+                    variantOptions = `<div class="mt-1 text-sm">`;
+
+                    // For weak point exercises, show suggestions based on muscle groups
+                    if (exercise.weakPointExercise) {
+                        variantOptions += `<div class="mb-1 text-xs text-gray-500 dark:text-gray-400">Weak Point Suggestions:</div>`;
+
+                        // Show suggestions
+                        weakPointSuggestions.forEach((suggestion, i) => {
+                            const suggExercises = getExercisesForMuscle(suggestion.muscle);
+                            if (suggExercises.length > 0) {
+                                variantOptions += `
+                                    <div class="mb-1">
+                                        <span class="text-xs" style="color: ${suggestion.color}">
+                                            ${suggestion.name} (${suggestion.percentage}%):
+                                        </span>
+                                        <div class="mt-1">
+                                `;
+
+                                // Show exercises for this muscle group
+                                suggExercises.forEach(ex => {
+                                    const isSelected = currentVariant === ex;
+                                    variantOptions += `
+                                        <span class="exercise-choice text-xs ${isSelected ? 'selected' : ''}" 
+                                              data-value="${ex}" 
+                                              data-exercise="${exerciseKey}">
+                                            ${ex}
+                                        </span>
+                                    `;
+                                });
+
+                                variantOptions += `</div></div>`;
+                            }
+                        });
+                    } else {
+                        // Regular variant selection
+                        exercise.variants.forEach(variant => {
+                            const isSelected = currentVariant === variant;
+                            variantOptions += `
+                                <span class="exercise-choice ${isSelected ? 'selected' : ''}" 
+                                      data-value="${variant}" 
+                                      data-exercise="${exerciseKey}">
+                                    ${variant}
+                                </span>
+                            `;
+                        });
+                    }
+
+                    variantOptions += `</div>`;
+                }
+
+                // Calculate total volume for this exercise if we have saved data
+                let totalVolume = 0;
+                let volumeByCategory = {
+                    strength: 0,
+                    hypertrophy: 0
+                };
+
+                if (savedExercise) {
+                    savedExercise.sets.forEach(set => {
+                        if (set.weight && set.actualReps) {
+                            // Convert weight to current unit if needed
+                            let weight = parseFloat(set.weight);
+                            if (savedWorkout.weightUnit && savedWorkout.weightUnit !== state.weightUnit) {
+                                weight = convertWeight(weight, savedWorkout.weightUnit, state.weightUnit);
+                            }
+
+                            const reps = parseInt(set.actualReps);
+
+                            if (!isNaN(weight) && !isNaN(reps)) {
+                                const setVolume = weight * reps;
+                                totalVolume += setVolume;
+
+                                // Categorize by strength/hypertrophy
+                                if (exercise.category === 'strength') {
+                                    volumeByCategory.strength += setVolume;
+                                } else if (exercise.category === 'hypertrophy') {
+                                    volumeByCategory.hypertrophy += setVolume;
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // Volume target for this exercise
+                const volumeTarget = exercise.targetVolume || 0;
+                const volumePercentage = volumeTarget > 0 ? Math.min(100, Math.round((totalVolume / volumeTarget) * 100)) : 0;
+
+                // Start the exercise row
+                tableHTML += `
+                    <tr class="border-t-2 border-gray-300 dark:border-gray-600">
+                        <td class="px-3 py-3 text-sm text-gray-900 dark:text-white font-medium" rowspan="${exercise.sets}">
+                            ${currentVariant}
+                            ${variantOptions}
+                        </td>
+                `;
+
+                // Add rows for each set
+                for (let set = 1; set <= exercise.sets; set++) {
+                    const savedSet = savedExercise && savedExercise.sets[set - 1] ? savedExercise.sets[set - 1] : null;
+                    const prevSet = prevExercise && prevExercise.sets[set - 1] ? prevExercise.sets[set - 1] : null;
+
+                    // Get previous weight (from previous week or set)
+                    let prevWeight = '';
+                    if (prevSet && prevSet.weight) {
+                        // Convert stored weight if units changed
+                        if (previousWeekData && previousWeekData.weightUnit && previousWeekData.weightUnit !== state.weightUnit) {
+                            prevWeight = convertWeight(
+                                prevSet.weight,
+                                previousWeekData.weightUnit,
+                                state.weightUnit
+                            );
+                        } else {
+                            prevWeight = prevSet.weight;
+                        }
+                    }
+
+                    // Calculate deload weight if needed (50% of previous week's weight)
+                    let deloadWeight = '';
+                    if (state.deloadWeeks[state.currentWeek] && prevWeight) {
+                        deloadWeight = roundToNearest(parseFloat(prevWeight) * 0.5);
+                    }
+
+                    // Determine weight to display
+                    let displayWeight = '';
+
+                    // If we have saved data for this workout, use that
+                    if (savedSet && savedSet.weight) {
+                        if (savedWorkout && savedWorkout.weightUnit && savedWorkout.weightUnit !== state.weightUnit) {
+                            displayWeight = convertWeight(
+                                savedSet.weight,
+                                savedWorkout.weightUnit,
+                                state.weightUnit
+                            );
+                        } else {
+                            displayWeight = savedSet.weight;
+                        }
+                    }
+                    // If this is a deload week, use 50% of previous
+                    else if (deloadWeight) {
+                        displayWeight = deloadWeight;
+                    }
+                    // Otherwise, use previous week's weight as default
+                    else if (prevWeight) {
+                        displayWeight = prevWeight;
+                    }
+
+                    // Determine if this weight is higher than previous
+                    const isHigherWeight = prevWeight && displayWeight && parseFloat(displayWeight) > parseFloat(prevWeight);
+
+                    if (set > 1) {
+                        tableHTML += `<tr>`;
+                    }
+
+                    tableHTML += `
+                        <td class="px-3 py-3 text-sm text-gray-500 dark:text-gray-400">
+                            Set ${set}: ${exercise.repRangeMin}-${exercise.repRangeMax}
+                            <div class="text-xs mt-1">${exercise.tempo} | ${exercise.rest} | RIR ${exercise.rirTarget}</div>
+                        </td>
+                        <td class="px-3 py-3">
+                            <div class="flex items-center">
+                                <button class="weight-decrement text-gray-500 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-l hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                                <input type="number" 
+                                    class="weight-input w-16 p-1 border-y border-gray-300 dark:border-gray-600 text-center bg-white dark:bg-gray-700 ${isHigherWeight ? 'weight-higher' : 'text-gray-800 dark:text-white'}" 
+                                    data-exercise="${index}" 
+                                    data-set="${set - 1}"
+                                    data-prev="${prevWeight}"
+                                    step="2.5"
+                                    value="${displayWeight}">
+                                <button class="weight-increment text-gray-500 px-2 py-1 bg-gray-200 dark:bg-gray-700 rounded-r hover:bg-gray-300 dark:hover:bg-gray-600 transition">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                    `;
+
+                    // Add time tracking for timed exercises
+                    if (exercise.timeTracked) {
+                        tableHTML += `
+                            <div class="mt-1 flex items-center">
+                                <input type="number" 
+                                    class="time-input w-12 p-1 text-center text-sm bg-white dark:bg-gray-700 text-gray-800 dark:text-white" 
+                                    data-exercise="${index}" 
+                                    data-set="${set - 1}"
+                                    data-time="true"
+                                    value="${savedSet && savedSet.time ? savedSet.time : ''}"
+                                    min="0">
+                                <span class="text-xs text-gray-500 dark:text-gray-400 ml-1">${exercise.timeUnit || 'mins'}</span>
+                            </div>
+                        `;
+                    }
+
+                    tableHTML += `
+                        </td>
+                        <td class="px-3 py-3">
+                            <input type="number" 
+                                class="reps-input w-16 p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white" 
+                                data-exercise="${index}" 
+                                data-set="${set - 1}" 
+                                value="${savedSet ? savedSet.actualReps : ''}">
+                        </td>
+                        <td class="px-3 py-3">
+                            <select class="rir-input w-16 p-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-800 dark:text-white"
+                                data-exercise="${index}" 
+                                data-set="${set - 1}">
+                                <option value="">-</option>
+                                <option value="0" ${savedSet && savedSet.rir === '0' ? 'selected' : ''}>0</option>
+                                <option value="1" ${savedSet && savedSet.rir === '1' ? 'selected' : ''}>1</option>
+                                <option value="2" ${savedSet && savedSet.rir === '2' ? 'selected' : ''}>2</option>
+                                <option value="3" ${savedSet && savedSet.rir === '3' ? 'selected' : ''}>3</option>
+                                <option value="4+" ${savedSet && savedSet.rir === '4+' ? 'selected' : ''}>4+</option>
+                            </select>
+                        </td>
+                    `;
+
+                    // Add volume column on first set 
+                    if (set === 1) {
+                        tableHTML += `
+                            <td class="px-3 py-3 text-sm" rowspan="${exercise.sets}">
+                                <div class="text-gray-800 dark:text-white font-medium mb-1">
+                                    ${!isNaN(totalVolume) ? Math.round(totalVolume) : 0} ${exercise.timeTracked ? (exercise.timeUnit || 'mins') : state.weightUnit}
+                                </div>
+                        `;
+
+                        // Add volume target and progress bar if not a timed exercise
+                        if (volumeTarget > 0 && !exercise.timeTracked) {
+                            tableHTML += `
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                                    Target: ${volumeTarget} ${state.weightUnit} (${volumePercentage}%)
+                                </div>
+                                <div class="volume-progress-bar w-full">
+                                    <div class="fill bg-blue-500" style="width: ${volumePercentage}%"></div>
+                                </div>
+                            `;
+                        }
+
+                        // Show breakdown of strength vs hypertrophy volume
+                        if (!exercise.timeTracked && (volumeByCategory.strength > 0 || volumeByCategory.hypertrophy > 0)) {
+                            tableHTML += `
+                                <div class="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                    <div class="flex justify-between">
+                                        <span>Strength:</span>
+                                        <span>${Math.round(volumeByCategory.strength)} ${state.weightUnit}</span>
+                                    </div>
+                                    <div class="flex justify-between">
+                                        <span>Hypertrophy:</span>
+                                        <span>${Math.round(volumeByCategory.hypertrophy)} ${state.weightUnit}</span>
+                                    </div>
+                                </div>
+                            `;
+                        }
+
+                        tableHTML += `</td>`;
+                    }
+
+                    // Add notes column on first set
+                    if (set === 1) {
+                        tableHTML += `
+                            <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-400" rowspan="${exercise.sets}">
+                                ${state.deloadWeeks[state.currentWeek] ? '<span class="text-yellow-500 font-semibold">DELOAD: 50% volume</span><br>' : ''}
+                                ${exercise.notes}
+                                ${exercise.muscleGroups && exercise.muscleGroups.length > 0 ?
+                                `<div class="text-xs mt-1">Targets: ${exercise.muscleGroups.map(m => muscleGroups[m]?.name || m).join(', ')}</div>` : ''}
+                            </td>
+                        `;
+                    }
+
+                    tableHTML += `</tr>`;
+                }
+            });
+
+            tableHTML += `
+                    </tbody>
+                </table>
+            `;
+
+            workoutContainer.innerHTML = tableHTML;
+
+            // Add event listeners for exercise variant selection
+            document.querySelectorAll('.exercise-choice').forEach(choice => {
+                choice.addEventListener('click', (e) => {
+                    const exerciseKey = e.target.dataset.exercise;
+                    const variant = e.target.dataset.value;
+
+                    // Update selected variant in state
+                    state.exerciseVariants[exerciseKey] = variant;
+
+                    // Update UI to show selected choice
+                    document.querySelectorAll(`.exercise-choice[data-exercise="${exerciseKey}"]`).forEach(c => {
+                        c.classList.remove('selected');
+                    });
+                    e.target.classList.add('selected');
+
+                    // Update the main exercise name display
+                    const firstCell = e.target.closest('tr').querySelector('td:first-child');
+                    const textNode = firstCell.childNodes[0];
+                    textNode.nodeValue = variant;
+
+                    saveData();
+                });
+            });
+
+            // Add weight increment/decrement event listeners
+            document.querySelectorAll('.weight-increment').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    const input = e.target.closest('td').querySelector('.weight-input');
+                    let value = parseFloat(input.value) || 0;
+                    input.value = roundToNearest(value + 2.5);
+
+                    // If this makes weight higher than previous, highlight it
+                    const prevWeight = parseFloat(input.dataset.prev) || 0;
+                    if (parseFloat(input.value) > prevWeight && prevWeight > 0) {
+                        input.classList.add('weight-higher');
+                    } else {
+                        input.classList.remove('weight-higher');
+                    }
+                });
+            });
+
+            document.querySelectorAll('.weight-decrement').forEach((btn) => {
+                btn.addEventListener('click', (e) => {
+                    const input = e.target.closest('td').querySelector('.weight-input');
+                    let value = parseFloat(input.value) || 0;
+                    input.value = roundToNearest(Math.max(0, value - 2.5));
+
+                    // Check if still higher than previous
+                    const prevWeight = parseFloat(input.dataset.prev) || 0;
+                    if (parseFloat(input.value) > prevWeight && prevWeight > 0) {
+                        input.classList.add('weight-higher');
+                    } else {
+                        input.classList.remove('weight-higher');
+                    }
+                });
+            });
+
+            // Add event listeners to round weight inputs to nearest 2.5
+            document.querySelectorAll('.weight-input').forEach(input => {
+                input.addEventListener('change', (e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    e.target.value = roundToNearest(value);
+
+                    // Check if higher than previous
+                    const prevWeight = parseFloat(e.target.dataset.prev) || 0;
+                    if (parseFloat(e.target.value) > prevWeight && prevWeight > 0) {
+                        e.target.classList.add('weight-higher');
+                    } else {
+                        e.target.classList.remove('weight-higher');
+                    }
+                });
+
+                // Also highlight on initial load if higher
+                const initialValue = parseFloat(input.value) || 0;
+                const prevWeight = parseFloat(input.dataset.prev) || 0;
+                if (initialValue > prevWeight && prevWeight > 0) {
+                    input.classList.add('weight-higher');
+                }
+            });
+        }
+
+        // Save current workout
+        function saveWorkout() {
+            if (!state.currentDay) return;
+
+            const template = workoutTemplates[`day${state.currentDay}`];
+            if (!template) return;
+
+            const weekKey = `week${state.currentWeek}`;
+            const dayKey = `day${state.currentDay}`;
+
+            // Initialize if not exists
+            if (!state.workoutData[weekKey]) {
+                state.workoutData[weekKey] = {};
+            }
+
+            // Prepare workout data
+            const workoutData = {
+                title: template.title,
+                day: state.currentDay,
+                week: state.currentWeek,
+                weightUnit: state.weightUnit, // Store the current unit with the workout
+                exercises: []
+            };
+
+            // Collect data from form inputs
+            template.exercises.forEach((exercise, exIndex) => {
+                // Get the current exercise variant if applicable
+                const exerciseKey = `${state.currentDay}-${exIndex}`;
+                let exerciseName = exercise.name;
+
+                if (state.exerciseVariants[exerciseKey]) {
+                    exerciseName = state.exerciseVariants[exerciseKey];
+                }
+
+                const sets = [];
+
+                for (let setIndex = 0; setIndex < exercise.sets; setIndex++) {
+                    const weightInput = document.querySelector(`.weight-input[data-exercise="${exIndex}"][data-set="${setIndex}"]`);
+                    const repsInput = document.querySelector(`.reps-input[data-exercise="${exIndex}"][data-set="${setIndex}"]`);
+                    const rirInput = document.querySelector(`.rir-input[data-exercise="${exIndex}"][data-set="${setIndex}"]`);
+                    const timeInput = document.querySelector(`input[data-exercise="${exIndex}"][data-set="${setIndex}"][data-time="true"]`);
+
+                    const setData = {
+                        weight: weightInput ? weightInput.value : '',
+                        actualReps: repsInput ? repsInput.value : '',
+                        rir: rirInput ? rirInput.value : ''
+                    };
+
+                    // Add time data if this is a timed exercise
+                    if (timeInput) {
+                        setData.time = timeInput.value;
+                    }
+
+                    sets.push(setData);
+                }
+
+                workoutData.exercises.push({
+                    name: exerciseName,
+                    sets: sets,
+                    repRange: `${exercise.repRangeMin}-${exercise.repRangeMax}`,
+                    tempo: exercise.tempo,
+                    rest: exercise.rest,
+                    rirTarget: exercise.rirTarget,
+                    category: exercise.category,
+                    muscleGroups: exercise.muscleGroups,
+                    timeTracked: exercise.timeTracked,
+                    timeUnit: exercise.timeUnit
+                });
+            });
+
+            // Save to state
+            state.workoutData[weekKey][dayKey] = workoutData;
+            saveData();
+
+            // Update UI
+            updateExerciseSelector();
+            updateCharts();
+            updateVolumeSummary();
+
+            // Show confirmation
+            alert('Workout saved!');
+        }
+
+        // Reset current workout
+        function resetWorkout() {
+            if (!confirm('Are you sure you want to reset this workout? All data will be lost.')) return;
+
+            const weekKey = `week${state.currentWeek}`;
+            const dayKey = `day${state.currentDay}`;
+
+            if (state.workoutData[weekKey] && state.workoutData[weekKey][dayKey]) {
+                delete state.workoutData[weekKey][dayKey];
+                saveData();
+            }
+
+            // Reload the workout
+            loadWorkout(state.currentDay);
+            updateExerciseSelector();
+            updateCharts();
+            updateVolumeSummary();
+        }
+
+        // Save week notes
+        function saveNotes() {
+            const week = parseInt(weekNoteSelector.value);
+            state.notes[week] = weekNotes.value;
+            saveData();
+            alert('Notes saved!');
+        }
+
+        // Toggle deload week
+        function toggleDeloadWeek() {
+            state.deloadWeeks[state.currentWeek] = deloadToggle.checked;
+            saveData();
+
+            // Reload the current workout if one is selected
+            updateUI();
+        }
+
+        // Toggle weight unit
+        function toggleWeightUnit() {
+            const newUnit = unitToggle.checked ? 'lbs' : 'kg';
+
+            // If unit changed, update state and UI
+            if (newUnit !== state.weightUnit) {
+                state.weightUnit = newUnit;
+                unitLabel.textContent = state.weightUnit.toUpperCase();
+                saveData();
+
+                // If a workout is loaded, reload it with the new unit
+                if (state.currentDay) {
+                    loadWorkout(state.currentDay);
+                    updateVolumeSummary();
+                }
+
+                // Update charts
+                updateCharts();
+            }
+        }
+
+        // Export data to CSV
+        function exportData() {
+            // Prepare data for export
+            let csvContent = "data:text/csv;charset=utf-8,";
+
+            // Headers
+            csvContent += "Week,Deload,Day,Exercise,Set,Weight,Unit,Actual Reps,RIR,Time,Time Unit,Target Rep Range,Tempo,Rest,RIR Target,Category,Muscle Groups\n";
+
+            // Data rows
+            for (const weekKey in state.workoutData) {
+                const week = weekKey.replace('week', '');
+                const isDeload = state.deloadWeeks[week] ? 'Yes' : 'No';
+
+                for (const dayKey in state.workoutData[weekKey]) {
+                    const workout = state.workoutData[weekKey][dayKey];
+                    const day = dayKey.replace('day', '');
+                    const unit = workout.weightUnit || 'kg'; // Default to kg if not specified
+
+                    workout.exercises.forEach((exercise, exIndex) => {
+                        exercise.sets.forEach((set, setIndex) => {
+                            const row = [
+                                week,
+                                isDeload,
+                                day,
+                                exercise.name,
+                                setIndex + 1,
+                                set.weight,
+                                unit,
+                                set.actualReps,
+                                set.rir,
+                                set.time || '',
+                                exercise.timeUnit || '',
+                                exercise.repRange,
+                                exercise.tempo,
+                                exercise.rest,
+                                exercise.rirTarget,
+                                exercise.category || '',
+                                exercise.muscleGroups ? exercise.muscleGroups.join(';') : ''
+                            ];
+
+                            csvContent += row.map(value => `"${value}"`).join(",") + "\n";
+                        });
+                    });
+                }
+            }
+
+            // Create download link
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `workout_tracker_export_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+
+            // Trigger download
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Update exercise selector for charts
+        function updateExerciseSelector() {
+            exerciseSelector.innerHTML = '<option value="">Select an exercise</option>';
+
+            // Collect all exercises from templates and user data
+            const exerciseMap = new Map(); // Use Map to track variants
+
+            // Add template exercises
+            for (const dayKey in workoutTemplates) {
+                workoutTemplates[dayKey].exercises.forEach((ex, exIndex) => {
+                    // Check if this is an exercise with variants
+                    if (ex.variants) {
+                        // For each variant, add as a separate exercise
+                        ex.variants.forEach(variant => {
+                            if (!exerciseMap.has(variant)) {
+                                exerciseMap.set(variant, {
+                                    name: variant,
+                                    category: ex.category,
+                                    muscleGroups: ex.muscleGroups
+                                });
+                            }
+                        });
+                    } else {
+                        // Regular exercise
+                        if (!exerciseMap.has(ex.name)) {
+                            exerciseMap.set(ex.name, {
+                                name: ex.name,
+                                category: ex.category,
+                                muscleGroups: ex.muscleGroups
+                            });
+                        }
+                    }
+                });
+            }
+
+            // Add any custom exercises from workout data
+            for (const weekKey in state.workoutData) {
+                for (const dayKey in state.workoutData[weekKey]) {
+                    const workout = state.workoutData[weekKey][dayKey];
+
+                    workout.exercises.forEach(ex => {
+                        if (!exerciseMap.has(ex.name)) {
+                            exerciseMap.set(ex.name, {
+                                name: ex.name,
+                                category: ex.category,
+                                muscleGroups: ex.muscleGroups
+                            });
+                        }
+                    });
+                }
+            }
+
+            // Convert to array and sort by category and name
+            const exercises = Array.from(exerciseMap.values()).sort((a, b) => {
+                // First sort by category (strength first)
+                if (a.category !== b.category) {
+                    if (a.category === 'strength') return -1;
+                    if (b.category === 'strength') return 1;
+                }
+                // Then by name
+                return a.name.localeCompare(b.name);
+            });
+
+            // Create option groups by category
+            const categories = {
+                strength: "Strength Exercises",
+                hypertrophy: "Hypertrophy Exercises",
+                endurance: "Endurance Exercises",
+                other: "Other Exercises"
+            };
+
+            // Create option groups
+            for (const category in categories) {
+                const categoryExercises = exercises.filter(ex => ex.category === category);
+
+                if (categoryExercises.length > 0) {
+                    const group = document.createElement('optgroup');
+                    group.label = categories[category];
+
+                    categoryExercises.forEach(ex => {
+                        const option = document.createElement('option');
+                        option.value = ex.name;
+                        option.textContent = ex.name;
+                        group.appendChild(option);
+                    });
+
+                    exerciseSelector.appendChild(group);
+                }
+            }
+
+            // Add uncategorized exercises
+            const uncategorized = exercises.filter(ex => !ex.category || !categories[ex.category]);
+            if (uncategorized.length > 0) {
+                const group = document.createElement('optgroup');
+                group.label = "Other Exercises";
+
+                uncategorized.forEach(ex => {
+                    const option = document.createElement('option');
+                    option.value = ex.name;
+                    option.textContent = ex.name;
+                    group.appendChild(option);
+                });
+
+                exerciseSelector.appendChild(group);
+            }
+        }
+
+        // Update progress charts
+        function updateCharts() {
+            const selectedExercise = exerciseSelector.value;
+            if (!selectedExercise) return;
+
+            // Collect data for selected exercise
+            const strengthData = [];
+            const volumeData = [];
+            const labels = [];
+
+            // Loop through weeks and days to find exercise data
+            for (let week = 1; week <= state.weekCount; week++) {
+                const weekKey = `week${week}`;
+                const isDeload = state.deloadWeeks[week] ? true : false;
+
+                for (const dayKey in state.workoutData[weekKey]) {
+                    const day = dayKey.replace('day', '');
+                    const workout = state.workoutData[weekKey][dayKey];
+
+                    // Find exercise in this workout
+                    workout.exercises.forEach((ex, exIndex) => {
+                        if (ex.name === selectedExercise) {
+                            // For strength, use max weight from first set
+                            if (ex.sets[0] && ex.sets[0].weight && ex.sets[0].actualReps) {
+                                // Convert weight to current unit if needed
+                                let weight = parseFloat(ex.sets[0].weight);
+                                if (workout.weightUnit && workout.weightUnit !== state.weightUnit) {
+                                    weight = convertWeight(weight, workout.weightUnit, state.weightUnit);
+                                }
+
+                                const reps = parseInt(ex.sets[0].actualReps);
+
+                                if (!isNaN(weight) && !isNaN(reps)) {
+                                    // Estimate 1RM using Brzycki formula: 1RM = weight × (36 / (37 - reps))
+                                    const estimatedOneRM = weight * (36 / (37 - reps));
+
+                                    const label = `W${week}${isDeload ? '(D)' : ''}D${day}`;
+
+                                    strengthData.push({
+                                        x: label,
+                                        y: Math.round(estimatedOneRM * 10) / 10
+                                    });
+
+                                    // If not already in labels, add it
+                                    if (!labels.includes(label)) {
+                                        labels.push(label);
+                                    }
+                                }
+                            }
+
+                            // For volume, calculate total weight × reps
+                            let totalVolume = 0;
+                            ex.sets.forEach(set => {
+                                if (set.weight && set.actualReps) {
+                                    // Convert weight to current unit if needed
+                                    let weight = parseFloat(set.weight);
+                                    if (workout.weightUnit && workout.weightUnit !== state.weightUnit) {
+                                        weight = convertWeight(weight, workout.weightUnit, state.weightUnit);
+                                    }
+
+                                    const reps = parseInt(set.actualReps);
+
+                                    if (!isNaN(weight) && !isNaN(reps)) {
+                                        totalVolume += weight * reps;
+                                    }
+                                }
+                            });
+
+                            if (totalVolume > 0) {
+                                const label = `W${week}${isDeload ? '(D)' : ''}D${day}`;
+
+                                volumeData.push({
+                                    x: label,
+                                    y: Math.round(totalVolume)
+                                });
+                            }
+                        }
+                    });
+                }
+            }
+
+            // Sort labels chronologically
+            labels.sort((a, b) => {
+                const weekA = parseInt(a.match(/W(\d+)/)[1]);
+                const dayA = parseInt(a.match(/D(\d+)/)[1]);
+                const weekB = parseInt(b.match(/W(\d+)/)[1]);
+                const dayB = parseInt(b.match(/D(\d+)/)[1]);
+
+                if (weekA !== weekB) return weekA - weekB;
+                return dayA - dayB;
+            });
+
+            // Update strength chart
+            if (strengthChart) strengthChart.destroy();
+            const strengthCtx = document.getElementById('strengthChart').getContext('2d');
+            strengthChart = new Chart(strengthCtx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Estimated 1RM (${state.weightUnit.toUpperCase()})`,
+                        data: strengthData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                        borderColor: 'rgba(59, 130, 246, 1)',
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true,
+                        pointBackgroundColor: function (context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            return label.includes('(D)') ? 'rgba(245, 158, 11, 1)' : 'rgba(59, 130, 246, 1)';
+                        },
+                        pointBorderColor: function (context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            return label.includes('(D)') ? 'rgba(245, 158, 11, 1)' : 'rgba(59, 130, 246, 1)';
+                        }
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${selectedExercise} - Strength Progress`,
+                            color: document.documentElement.classList.contains('dark') ? 'white' : 'black',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function (tooltipItems) {
+                                    const item = tooltipItems[0];
+                                    const isDeload = item.label.includes('(D)');
+                                    return `${item.label}${isDeload ? ' - DELOAD WEEK' : ''}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            },
+                            grid: {
+                                color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            },
+                            grid: {
+                                color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            },
+                            beginAtZero: false
+                        }
+                    }
+                }
+            });
+
+            // Update volume chart
+            if (volumeChart) volumeChart.destroy();
+            const volumeCtx = document.getElementById('volumeChart').getContext('2d');
+            volumeChart = new Chart(volumeCtx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: `Total Volume (${state.weightUnit.toUpperCase()})`,
+                        data: volumeData,
+                        backgroundColor: function (context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            return label.includes('(D)') ? 'rgba(245, 158, 11, 0.7)' : 'rgba(236, 72, 153, 0.7)';
+                        },
+                        borderColor: function (context) {
+                            const label = context.chart.data.labels[context.dataIndex];
+                            return label.includes('(D)') ? 'rgba(245, 158, 11, 1)' : 'rgba(236, 72, 153, 1)';
+                        },
+                        borderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `${selectedExercise} - Volume Progress`,
+                            color: document.documentElement.classList.contains('dark') ? 'white' : 'black',
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            labels: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                title: function (tooltipItems) {
+                                    const item = tooltipItems[0];
+                                    const isDeload = item.label.includes('(D)');
+                                    return `${item.label}${isDeload ? ' - DELOAD WEEK' : ''}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            },
+                            grid: {
+                                color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            }
+                        },
+                        y: {
+                            ticks: {
+                                color: document.documentElement.classList.contains('dark') ? 'white' : 'black'
+                            },
+                            grid: {
+                                color: document.documentElement.classList.contains('dark') ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)'
+                            },
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Calculate next week's recommended weights
+        function calculateNextWeekWeights(weekNum, dayNum) {
+            const weekKey = `week${weekNum}`;
+            const dayKey = `day${dayNum}`;
+            const nextWeekKey = `week${weekNum + 1}`;
+
+            // Skip if no data for current week/day
+            if (!state.workoutData[weekKey] || !state.workoutData[weekKey][dayKey]) return;
+
+            // Initialize next week if it doesn't exist
+            if (!state.workoutData[nextWeekKey]) {
+                state.workoutData[nextWeekKey] = {};
+            }
+
+            // Skip if next week already has data for this day
+            if (state.workoutData[nextWeekKey][dayKey]) return;
+
+            const workout = state.workoutData[weekKey][dayKey];
+            const template = workoutTemplates[`day${dayNum}`];
+
+            // Create new workout for next week
+            const newWorkout = {
+                title: template.title,
+                day: dayNum,
+                week: weekNum + 1,
+                weightUnit: state.weightUnit, // Use current weight unit
+                exercises: []
+            };
+
+            // Process each exercise
+            workout.exercises.forEach((exercise, exIndex) => {
+                const templateEx = template.exercises[exIndex];
+                const newExercise = {
+                    name: exercise.name,
+                    sets: [],
+                    repRange: exercise.repRange,
+                    tempo: exercise.tempo,
+                    rest: exercise.rest,
+                    rirTarget: exercise.rirTarget,
+                    category: exercise.category,
+                    muscleGroups: exercise.muscleGroups,
+                    timeTracked: exercise.timeTracked,
+                    timeUnit: exercise.timeUnit
+                };
+
+                // Process each set
+                exercise.sets.forEach((set, setIndex) => {
+                    let newWeight = set.weight;
+
+                    // Calculate new weight based on RIR and check for deload
+                    if (set.weight && set.actualReps && set.rir) {
+                        // Convert weight to current unit if needed
+                        let weight = parseFloat(set.weight);
+                        if (workout.weightUnit && workout.weightUnit !== state.weightUnit) {
+                            weight = convertWeight(weight, workout.weightUnit, state.weightUnit);
+                        }
+
+                        const reps = parseInt(set.actualReps);
+                        const rir = set.rir === '4+' ? 4 : parseInt(set.rir);
+
+                        if (!isNaN(weight) && !isNaN(reps) && !isNaN(rir)) {
+                            // If next week is a deload week, use 50% of current weight
+                            if (state.deloadWeeks[weekNum + 1]) {
+                                newWeight = roundToNearest(weight * 0.5);
+                            } else {
+                                // If RIR is 0, increase weight by 2.5-5%
+                                if (rir === 0) {
+                                    newWeight = roundToNearest(weight * 0.975); // Reduce slightly
+                                }
+                                // If RIR is 1, maintain weight
+                                else if (rir === 1) {
+                                    newWeight = roundToNearest(weight);
+                                }
+                                // If RIR is 2, maintain weight or increase slightly if at top of rep range
+                                else if (rir === 2) {
+                                    const repMax = templateEx.repRangeMax;
+                                    if (reps >= repMax) {
+                                        newWeight = roundToNearest(weight * 1.025); // Slight increase
+                                    } else {
+                                        newWeight = roundToNearest(weight);
+                                    }
+                                }
+                                // If RIR is 3 or more, increase weight by 5-10%
+                                else if (rir >= 3) {
+                                    newWeight = roundToNearest(weight * 1.05);
+                                }
+                            }
+                        }
+                    }
+
+                    const newSet = {
+                        weight: newWeight || '',
+                        actualReps: '',
+                        rir: ''
+                    };
+
+                    // Include time field if this is a timed exercise
+                    if (set.time) {
+                        newSet.time = set.time;
+                    }
+
+                    newExercise.sets.push(newSet);
+                });
+
+                newWorkout.exercises.push(newExercise);
+            });
+
+            // Save to state
+            state.workoutData[nextWeekKey][dayKey] = newWorkout;
+        }
+
+        // Toggle dark mode
+        function toggleDarkMode() {
+            document.documentElement.classList.toggle('dark');
+
+            // Save preference
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            localStorage.setItem('darkMode', isDarkMode);
+
+            // Update charts with new theme
+            updateCharts();
+        }
+
+        // Check if dark mode is preferred
+        function checkDarkModePreference() {
+            const savedPreference = localStorage.getItem('darkMode');
+            const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (savedPreference === 'true' || (savedPreference === null && prefersDark)) {
+                document.documentElement.classList.add('dark');
+            }
+        }
+
+        // Event Listeners
+        function setupEventListeners() {
+            // Week navigation
+            weekSelector.addEventListener('change', () => {
+                state.currentWeek = parseInt(weekSelector.value);
+                updateUI();
+            });
+
+            weekNoteSelector.addEventListener('change', () => {
+                const week = parseInt(weekNoteSelector.value);
+                weekNotes.value = state.notes[week] || '';
+            });
+
+            prevWeekBtn.addEventListener('click', () => {
+                if (state.currentWeek > 1) {
+                    state.currentWeek--;
+                    updateUI();
+                }
+            });
+
+            nextWeekBtn.addEventListener('click', () => {
+                if (state.currentWeek < state.weekCount) {
+                    state.currentWeek++;
+                    updateUI();
+                }
+            });
+
+            addWeekBtn.addEventListener('click', () => {
+                state.weekCount++;
+
+                // Auto-calculate next week's weights
+                for (let day = 1; day <= 6; day++) {
+                    if ([1, 2, 4, 5, 6].includes(day)) {
+                        calculateNextWeekWeights(state.currentWeek, day);
+                    }
+                }
+
+                state.currentWeek = state.weekCount;
+                saveData();
+                updateUI();
+            });
+
+            // Day selection
+            dayButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    state.currentDay = parseInt(btn.dataset.day);
+                    updateUI();
+                });
+            });
+
+            // Workout actions
+            saveWorkoutBtn.addEventListener('click', saveWorkout);
+            resetWorkoutBtn.addEventListener('click', resetWorkout);
+
+            // Export
+            exportBtn.addEventListener('click', exportData);
+
+            // Dark mode
+            darkModeToggle.addEventListener('click', toggleDarkMode);
+
+            // Notes
+            saveNotesBtn.addEventListener('click', saveNotes);
+
+            // Exercise selector for charts
+            exerciseSelector.addEventListener('change', updateCharts);
+
+            // Deload toggle
+            deloadToggle.addEventListener('change', toggleDeloadWeek);
+
+            // Weight unit toggle
+            unitToggle.addEventListener('change', toggleWeightUnit);
+        }
+
+        // Initialize application
+        function init() {
+            checkDarkModePreference();
+            loadData();
+            setupEventListeners();
+        }
+
+        // Start the app
+        init();
+    </script>
+</body>
+
+</html>
